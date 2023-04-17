@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.encoders import jsonable_encoder
 
 
 from functools import wraps
@@ -144,7 +145,7 @@ class EventPushElBody(BaseModel):
 
 approved_ip_dict = {
     '172.0.0.1': 'robot1',
-    '127.0.0.1': 'robot1',
+    '127.0.0.1': 'localhost_ip',
     '223.171.146.77': 'G18-0009'
 
 }
@@ -186,7 +187,7 @@ async def async_post(url, data):
                     print(COLOR_RED + "POST ERROR API Status Code 400 / "+ get_call_function() + COLOR_END)
                 return json
         except Exception as error:
-            print(COLOR_RED + 'GET_ERROR / ' + error + '/' + get_call_function() + COLOR_END)
+            print(COLOR_RED + 'POST_ERROR / ' + error + '/' + get_call_function() + COLOR_END)
             return False
 
 async def async_put(url):
@@ -198,7 +199,7 @@ async def async_put(url):
                     print(COLOR_RED + "PUT ERROR API Status Code 400 / "+ self.get_call_function() + COLOR_END)
                 return
         except Exception as error:
-            print(COLOR_RED + 'GET_ERROR / ' + error + '/' + self.get_call_function() + COLOR_END)
+            print(COLOR_RED + 'PUT_ERROR / ' + error + '/' + self.get_call_function() + COLOR_END)
             return False
 
 
@@ -211,7 +212,7 @@ async def async_delete(url):
                     print(COLOR_RED + "DELETE ERROR API Status Code 400 / "+ self.get_call_function() + COLOR_END)
                 return
         except Exception as error:
-            print(COLOR_RED + 'GET_ERROR / ' + error + '/' + self.get_call_function() + COLOR_END)
+            print(COLOR_RED + 'DELETE_ERROR / ' + error + '/' + self.get_call_function() + COLOR_END)
             return False
 
 
@@ -295,21 +296,23 @@ def get_line_detailed_info(request : Request, siteId):
 
 #원격 콜 요청
 @app.post("/api/v1/el/call/general")
-def general_call(request : Request):
+def general_call(request : Request, body:GeneralCallBody):
     if client_ip_check(request.client.host) == False:
         raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url+'/api/v1/el/call/general'
-    request_body = request.json()
+    request_body = jsonable_encoder(body)
+    print(json.dumps(request_body, indent=4))
     response = asyncio.run(async_post(url, request_body))
     return response
 
 #사물 원격 콜 요청
 @app.post("/api/v1/el/call/thing")
-def robot_call(request : Request):
+def robot_call(request : Request, body:RobotCallBody):
     if client_ip_check(request.client.host) == False:
         raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url+'/api/v1/el/call/thing'
-    request_body = request.json()
+    request_body = jsonable_encoder(body)
+    print(json.dumps(request_body, indent=4))
     response = asyncio.run(async_post(url, request_body))
     return response
 
@@ -374,7 +377,7 @@ def event_push_robot(request : Request, body: EventPushRobotBody):
     if client_ip_check(request.client.host) == False:
         raise HTTPException(status_code=403, detail="Access is Denied") 
     #url = base_url+'/api/v1/el/call/thing'
-    request_body = body.json()
+    request_body = jsonable_encoder(body)
     response = asyncio.run(async_post(url, request_body))
     return response
 
@@ -384,7 +387,7 @@ def event_push_el(request : Request, body:EventPushElBody):
     if client_ip_check(request.client.host) == False:
         raise HTTPException(status_code=403, detail="Access is Denied") 
     #url = base_url+'/api/v1/el/call/thing'
-    request_body = body.json()
+    request_body = jsonable_encoder(body)
     response = asyncio.run(async_post(url, request_body))
     return response
 
