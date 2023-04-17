@@ -144,6 +144,7 @@ class EventPushElBody(BaseModel):
 
 
 approved_ip_dict = {
+    '13.125.50.47' : 'api_server',
     '172.0.0.1': 'robot1',
     '127.0.0.1': 'localhost_ip',
     '223.171.146.77': 'G18-0009'
@@ -196,10 +197,10 @@ async def async_put(url):
             async with session.put(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
                 if response.status == 400:
-                    print(COLOR_RED + "PUT ERROR API Status Code 400 / "+ self.get_call_function() + COLOR_END)
+                    print(COLOR_RED + "PUT ERROR API Status Code 400 / "+ get_call_function() + COLOR_END)
                 return
         except Exception as error:
-            print(COLOR_RED + 'PUT_ERROR / ' + error + '/' + self.get_call_function() + COLOR_END)
+            print(COLOR_RED + 'PUT_ERROR / ' + error + '/' + get_call_function() + COLOR_END)
             return False
 
 
@@ -209,10 +210,10 @@ async def async_delete(url):
             async with session.delete(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
                 if response.status == 400:
-                    print(COLOR_RED + "DELETE ERROR API Status Code 400 / "+ self.get_call_function() + COLOR_END)
+                    print(COLOR_RED + "DELETE ERROR API Status Code 400 / "+ get_call_function() + COLOR_END)
                 return
         except Exception as error:
-            print(COLOR_RED + 'DELETE_ERROR / ' + error + '/' + self.get_call_function() + COLOR_END)
+            print(COLOR_RED + 'DELETE_ERROR / ' + error + '/' + get_call_function() + COLOR_END)
             return False
 
 
@@ -340,7 +341,7 @@ def set_robot_call_status(request : Request, messageid, status):
     if client_ip_check(request.client.host) == False:
         raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url + '/api/v1/el/call/thing/messageid/'+messageid+'/status/'+status
-    asyncio.run(async_get(url))
+    asyncio.run(async_put(url))
     return
 
 #라인 운행 상태
@@ -377,8 +378,11 @@ def event_push_robot(request : Request, body: EventPushRobotBody):
     if client_ip_check(request.client.host) == False:
         raise HTTPException(status_code=403, detail="Access is Denied") 
     #url = base_url+'/api/v1/el/call/thing'
+    url = 'http://127.0.0.1:8080/test'
     request_body = jsonable_encoder(body)
+    print(json.dumps(request_body, indent=4))
     response = asyncio.run(async_post(url, request_body))
+    print(json.dumps(jsonable_encoder(response), indent=4))
     return response
 
 #이벤트 푸쉬 서버, EL 도착 이벤트
@@ -408,4 +412,4 @@ async def root():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8080)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
