@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 
 
 from functools import wraps
@@ -22,8 +22,20 @@ import hashlib
 import codecs
 import hmac
 
+import sys
+from pydantic import BaseModel
+
 
 i = 0
+
+COLOR_MAGENTA = '\033[95m'
+COLOR_GREEN   = '\033[92m'
+COLOR_BLUE    = '\033[94m'
+COLOR_RED     = '\033[91m'
+COLOR_YELLOW  = '\033[93m'
+COLOR_END     = '\033[0m'
+BOLD_START    = '\033[1m'
+BOLD_END      = '\033[0m'
 
 HMAC_ALGORITHM = "HmacSHA256"
 API_KEY = 'HDE57e65ff1960c11ed92a'
@@ -88,65 +100,119 @@ class Hyundai_EV_api:
         return timestamp
 
 
+    
 
+class Dummy(BaseModel):
+    data: str
+
+class GeneralCallBody(BaseModel):
+    lineId : str
+    callType : str
+    sourceFloor : str
+    direction : str
+    destinationFloor : str
+    elId : str
+
+class RobotCallBody(BaseModel):
+    lineId : str
+    callType : str
+    sourceFloor : str
+    direction : str
+    destinationFloor : str
+    thingInfo : str
+
+
+class EventPushRobotBody(BaseModel):
+    messageId : str
+    thingInfo : str
+    lineId : str
+    elId : str
+    serviceStatus : str
+
+
+class EventPushElBody(BaseModel):
+    messageId : str
+    lineId : str
+    elId : str
+    mode : str
+    currentFloor : str
+    direction : str
+    doorStatus : str
+    registedUpHallCall : str
+    registedDnHallCall : str
+
+
+approved_ip_dict = {
+    '172.0.0.1': 'robot1',
+    '127.0.0.1': 'robot1',
+    '223.171.146.77': 'G18-0009'
+
+}
 
     
 app = FastAPI()
 
 hd = Hyundai_EV_api()
 
-base_url = 'http://127.0.0.1:8000'
-#base_url = 'http://13.125.50.47:8080'
+#base_url = 'http://127.0.0.1:8000'
+base_url = 'http://13.125.50.47:8080'
+
+def get_call_function():
+    return sys._getframe(7).f_code.co_name
+
+def client_ip_check(ip_addr):
+    return True if ip_addr in approved_ip_dict else False
+
 
 async def async_get(url):
     async with aiohttp.ClientSession(headers = hd.make_header()) as session:
-        async with session.get(url) as response:
-            try:
+        try:
+            async with session.get(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
                 if response.status == 400:
-                    print(COLOR_RED + "GET ERROR API Status Code 400 / "+ self.get_call_function() + COLOR_END)
+                    print(COLOR_RED + "GET ERROR API Status Code 400 / "+ get_call_function() + COLOR_END)
                 return json
-            except Exception as error:
-                print(COLOR_RED + 'GET_ERROR / ' + error + '/' + self.get_call_function() + COLOR_END)
-                return False
+        except Exception as error:
+            print(COLOR_RED + 'GET_ERROR / ' + str(error) + '/' + get_call_function() + COLOR_END)
+            return False
 
 
 async def async_post(url, data):
     async with aiohttp.ClientSession(headers = hd.make_header()) as session:
-        async with session.post(url, json=data) as response:
-            try:
+        try:
+            async with session.post(url, json=data) as response: 
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
                 if response.status == 400:
-                    print(COLOR_RED + "POST ERROR API Status Code 400 / "+ self.get_call_function() + COLOR_END)
+                    print(COLOR_RED + "POST ERROR API Status Code 400 / "+ get_call_function() + COLOR_END)
                 return json
-            except Exception as error:
-                print(COLOR_RED + 'GET_ERROR / ' + error + '/' + self.get_call_function() + COLOR_END)
-                return False
+        except Exception as error:
+            print(COLOR_RED + 'GET_ERROR / ' + error + '/' + get_call_function() + COLOR_END)
+            return False
 
 async def async_put(url):
     async with aiohttp.ClientSession(headers = hd.make_header()) as session:
-        async with session.put(url) as response:
-            try:
+        try:
+            async with session.put(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
                 if response.status == 400:
                     print(COLOR_RED + "PUT ERROR API Status Code 400 / "+ self.get_call_function() + COLOR_END)
                 return
-            except Exception as error:
-                print(COLOR_RED + 'GET_ERROR / ' + error + '/' + self.get_call_function() + COLOR_END)
-                return False
+        except Exception as error:
+            print(COLOR_RED + 'GET_ERROR / ' + error + '/' + self.get_call_function() + COLOR_END)
+            return False
 
 
 async def async_delete(url):
     async with aiohttp.ClientSession(headers = hd.make_header()) as session:
-        async with session.delete(url) as response:
-            try:
+        try:
+            async with session.delete(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
                 if response.status == 400:
                     print(COLOR_RED + "DELETE ERROR API Status Code 400 / "+ self.get_call_function() + COLOR_END)
                 return
-            except Exception as error:
-                print(COLOR_RED + 'GET_ERROR / ' + error + '/' + self.get_call_function() + COLOR_END)
-                return False
+        except Exception as error:
+            print(COLOR_RED + 'GET_ERROR / ' + error + '/' + self.get_call_function() + COLOR_END)
+            return False
 
 
 def a():
@@ -202,21 +268,27 @@ def testt():
 
 #사이트 목록 조회
 @app.get("/api/v1/app/site")
-def get_site_list():
+def get_site_list(request : Request):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url+'/api/v1/app/site'
     response = asyncio.run(async_get(url))
     return response
 
 #사이트 상세 조회
 @app.get("/api/v1/app/site/{siteId}")
-def get_site_detailed_info(siteId):
+def get_site_detailed_info(request : Request, siteId):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url+'/api/v1/app/site/'+siteId
     response = asyncio.run(async_get(url))
     return response
 
 #라인 상세 조회
 @app.get("/api/v1/app/line/{lineId}")
-def get_line_detailed_info(siteId):
+def get_line_detailed_info(request : Request, siteId):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url+'/api/v1/app/line/'+lineId
     response = asyncio.run(async_get(url))
     return response
@@ -224,64 +296,104 @@ def get_line_detailed_info(siteId):
 #원격 콜 요청
 @app.post("/api/v1/el/call/general")
 def general_call(request : Request):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url+'/api/v1/el/call/general'
-    request_body = await request.json()
+    request_body = request.json()
     response = asyncio.run(async_post(url, request_body))
     return response
 
 #사물 원격 콜 요청
 @app.post("/api/v1/el/call/thing")
 def robot_call(request : Request):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url+'/api/v1/el/call/thing'
-    request_body = await request.json()
+    request_body = request.json()
     response = asyncio.run(async_post(url, request_body))
     return response
 
 #사물 원격 콜 취소
 @app.delete("/api/v1/el/call/thing/messageid/{messageid}")
-def delete_robot_call(messageid):
+def delete_robot_call(request : Request, messageid):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url+'/api/v1/el/call/thing/messageid/'+messageid
     asyncio.run(async_delete(url))
     return
 
 #EL 연동 상태 조회
 @app.get("/api/v1/el/call/thing/messageid/{messageid}/status")
-def get_robot_call_status(messageid):
+def get_robot_call_status(request : Request, messageid):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url + '/api/v1/el/call/thing/messageid/'+messageid+'/status'
     response = asyncio.run(async_get(url))
     return response
 
 #사물 연동 상태 전송
 @app.put("/api/v1/el/call/thing/messageid/{messageid}/status/{status}")
-def set_robot_call_status(messageid, status):
+def set_robot_call_status(request : Request, messageid, status):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url + '/api/v1/el/call/thing/messageid/'+messageid+'/status/'+status
     asyncio.run(async_get(url))
     return
 
 #라인 운행 상태
 @app.get("/api/v1/el/lineid/{lineid}/status")
-def get_line_status(lineid):
+def get_line_status(request : Request, lineid):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url + '/api/v1/el/lineid/'+lineid+'/status'
     response = asyncio.run(async_get(url))
     return response
 
 #EL 운행 상태
 @app.get("/api/v1/el/lineid/{lineid}/elid/{elid}/status")
-def get_el_status(lineid, elid):
+def get_el_status(request : Request, lineid, elid):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url + '/api/v1/el/lineid/'+lineid+'/elid/'+elid+'/status'
     response = asyncio.run(async_get(url))
     return response
 
 #라인 별 메시지 ID 조회
 @app.get("/api/v1/el/call/thing/lineid/{lineid}/messageid ")
-def get_el_status(lineid):
+def get_el_status(request : Request, lineid):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url + '/api/v1/el/call/thing/lineid/'+lineid+'/messageid'
     response = asyncio.run(async_get(url))
     return response
 
 
-@app.get("/test")
-def get_line_statuss():
+#이벤트 푸쉬 서버, ROBOT 상태 이벤트
+@app.post("/event_push/robot")
+def event_push_robot(request : Request, body: EventPushRobotBody):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
+    #url = base_url+'/api/v1/el/call/thing'
+    request_body = body.json()
+    response = asyncio.run(async_post(url, request_body))
+    return response
+
+#이벤트 푸쉬 서버, EL 도착 이벤트
+@app.post("/event_push/el")
+def event_push_el(request : Request, body:EventPushElBody):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
+    #url = base_url+'/api/v1/el/call/thing'
+    request_body = body.json()
+    response = asyncio.run(async_post(url, request_body))
+    return response
+
+
+@app.post("/test")
+def get_line_statuss(request: Request, dummy: Dummy):
+    print(dummy.json())
+    client_host = request.client.host
+    print("client_host: " + client_host)
     url = base_url + '/testt'
     response = asyncio.run(async_get(url))
     return response
