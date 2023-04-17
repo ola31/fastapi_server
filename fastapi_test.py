@@ -159,6 +159,8 @@ hd = Hyundai_EV_api()
 #base_url = 'http://127.0.0.1:8000'
 base_url = 'http://13.125.50.47:8080'
 
+robot_ip_dict = {}  # {messageId : robot_ip_addr}
+
 def get_call_function():
     return sys._getframe(7).f_code.co_name
 
@@ -171,8 +173,8 @@ async def async_get(url):
         try:
             async with session.get(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
-                if response.status == 400:
-                    print(COLOR_RED + "GET ERROR API Status Code 400 / "+ get_call_function() + COLOR_END)
+                if response.status != 200:
+                    print(COLOR_RED + "GET ERROR API Status Code "+ response.status + " /"+ get_call_function() + COLOR_END)
                 return json
         except Exception as error:
             print(COLOR_RED + 'GET_ERROR / ' + str(error) + '/' + get_call_function() + COLOR_END)
@@ -184,8 +186,8 @@ async def async_post(url, data):
         try:
             async with session.post(url, json=data) as response: 
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
-                if response.status == 400:
-                    print(COLOR_RED + "POST ERROR API Status Code 400 / "+ get_call_function() + COLOR_END)
+                if response.status != 200:
+                    print(COLOR_RED + "POST ERROR API Status Code "+ response.status + " /"+ get_call_function() + COLOR_END)
                 return json
         except Exception as error:
             print(COLOR_RED + 'POST_ERROR / ' + error + '/' + get_call_function() + COLOR_END)
@@ -196,8 +198,8 @@ async def async_put(url):
         try:
             async with session.put(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
-                if response.status == 400:
-                    print(COLOR_RED + "PUT ERROR API Status Code 400 / "+ get_call_function() + COLOR_END)
+                if response.status != 200:
+                    print(COLOR_RED + "PUT ERROR API Status Code "+ response.status + " /"+ get_call_function() + COLOR_END)
                 return
         except Exception as error:
             print(COLOR_RED + 'PUT_ERROR / ' + error + '/' + get_call_function() + COLOR_END)
@@ -209,8 +211,8 @@ async def async_delete(url):
         try:
             async with session.delete(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
-                if response.status == 400:
-                    print(COLOR_RED + "DELETE ERROR API Status Code 400 / "+ get_call_function() + COLOR_END)
+                if response.status != 200:
+                    print(COLOR_RED + "DELETE ERROR API Status Code "+ response.status + " /"+ get_call_function() + COLOR_END)
                 return
         except Exception as error:
             print(COLOR_RED + 'DELETE_ERROR / ' + error + '/' + get_call_function() + COLOR_END)
@@ -315,6 +317,8 @@ def robot_call(request : Request, body:RobotCallBody):
     request_body = jsonable_encoder(body)
     print(json.dumps(request_body, indent=4))
     response = asyncio.run(async_post(url, request_body))
+    if 'messageId' in response:
+        robot_ip_dict[response['messageId']] = request.client.host #add event push ip
     return response
 
 #사물 원격 콜 취소
@@ -324,6 +328,8 @@ def delete_robot_call(request : Request, messageid):
         raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url+'/api/v1/el/call/thing/messageid/'+messageid
     asyncio.run(async_delete(url))
+    if messageid in robot_ip_dict:
+        del robot_ip_dict[messageid] #remove event push ip
     return
 
 #EL 연동 상태 조회
@@ -342,6 +348,8 @@ def set_robot_call_status(request : Request, messageid, status):
         raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url + '/api/v1/el/call/thing/messageid/'+messageid+'/status/'+status
     asyncio.run(async_put(url))
+    if messageid == 'destinationFloorGotOff' and messageid in robot_ip_dict:
+        del robot_ip_dict[messageid] #remove event push ip
     return
 
 #라인 운행 상태
