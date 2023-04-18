@@ -142,6 +142,9 @@ class EventPushElBody(BaseModel):
     registedUpHallCall : str
     registedDnHallCall : str
 
+class EventPushResponse(BaseModel):
+    result: str
+
 
 approved_ip_dict = {
     '13.125.50.47' : 'api_server',
@@ -167,6 +170,9 @@ def get_call_function():
 def client_ip_check(ip_addr):
     return True if ip_addr in approved_ip_dict else False
 
+async def async_sleep(t):
+    await asyncio.sleep(t)
+
 
 async def async_get(url):
     async with aiohttp.ClientSession(headers = hd.make_header()) as session:
@@ -174,7 +180,7 @@ async def async_get(url):
             async with session.get(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
                 if response.status != 200:
-                    print(COLOR_RED + "GET ERROR API Status Code "+ response.status + " /"+ get_call_function() + COLOR_END)
+                    print(COLOR_RED + "GET ERROR API Status Code "+ str(response.status) + " /"+ get_call_function() + COLOR_END)
                 return json
         except Exception as error:
             print(COLOR_RED + 'GET_ERROR / ' + str(error) + '/' + get_call_function() + COLOR_END)
@@ -187,10 +193,10 @@ async def async_post(url, data):
             async with session.post(url, json=data) as response: 
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
                 if response.status != 200:
-                    print(COLOR_RED + "POST ERROR API Status Code "+ response.status + " /"+ get_call_function() + COLOR_END)
+                    print(COLOR_RED + "POST ERROR API Status Code "+ str(response.status) + " /"+ get_call_function() + COLOR_END)
                 return json
         except Exception as error:
-            print(COLOR_RED + 'POST_ERROR / ' + error + '/' + get_call_function() + COLOR_END)
+            print(COLOR_RED + 'POST_ERROR / ' + str(error) + '/' + get_call_function() + COLOR_END)
             return False
 
 async def async_put(url):
@@ -199,10 +205,10 @@ async def async_put(url):
             async with session.put(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
                 if response.status != 200:
-                    print(COLOR_RED + "PUT ERROR API Status Code "+ response.status + " /"+ get_call_function() + COLOR_END)
+                    print(COLOR_RED + "PUT ERROR API Status Code "+ str(response.status) + " /"+ get_call_function() + COLOR_END)
                 return
         except Exception as error:
-            print(COLOR_RED + 'PUT_ERROR / ' + error + '/' + get_call_function() + COLOR_END)
+            print(COLOR_RED + 'PUT_ERROR / ' + str(error) + '/' + get_call_function() + COLOR_END)
             return False
 
 
@@ -212,10 +218,10 @@ async def async_delete(url):
             async with session.delete(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), timeout=10)
                 if response.status != 200:
-                    print(COLOR_RED + "DELETE ERROR API Status Code "+ response.status + " /"+ get_call_function() + COLOR_END)
+                    print(COLOR_RED + "DELETE ERROR API Status Code "+ str(response.status) + " /"+ get_call_function() + COLOR_END)
                 return
         except Exception as error:
-            print(COLOR_RED + 'DELETE_ERROR / ' + error + '/' + get_call_function() + COLOR_END)
+            print(COLOR_RED + 'DELETE_ERROR / ' + str(error) + '/' + get_call_function() + COLOR_END)
             return False
 
 
@@ -371,7 +377,7 @@ def get_el_status(request : Request, lineid, elid):
     return response
 
 #라인 별 메시지 ID 조회
-@app.get("/api/v1/el/call/thing/lineid/{lineid}/messageid ")
+@app.get("/api/v1/el/call/thing/lineid/{lineid}/messageid")
 def get_el_status(request : Request, lineid):
     if client_ip_check(request.client.host) == False:
         raise HTTPException(status_code=403, detail="Access is Denied") 
@@ -385,8 +391,15 @@ def get_el_status(request : Request, lineid):
 def event_push_robot(request : Request, body: EventPushRobotBody):
     if client_ip_check(request.client.host) == False:
         raise HTTPException(status_code=403, detail="Access is Denied") 
-    #url = base_url+'/api/v1/el/call/thing'
-    url = 'http://127.0.0.1:8080/test'
+    #url = 'http://127.0.0.1:8080/test'
+    cnt = 0
+    while body.messageId not in robot_ip_dict:
+        time.sleep(0.01)
+        cnt = cnt+1
+        print('wait: '+cnt) 
+        if cnt>30:
+            return EventPushResponse(result='fail')
+    url='http://'+robot_ip_dict[body.messageId]+':8080/test'
     request_body = jsonable_encoder(body)
     print(json.dumps(request_body, indent=4))
     response = asyncio.run(async_post(url, request_body))
