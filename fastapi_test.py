@@ -399,7 +399,7 @@ def event_push_robot(request : Request, body: EventPushRobotBody):
         print('wait: '+cnt) 
         if cnt>30:
             return EventPushResponse(result='fail')
-    url='http://'+robot_ip_dict[body.messageId]+':8080/test'
+    url='http://'+robot_ip_dict[body.messageId]+':8675/test'
     request_body = jsonable_encoder(body)
     print(json.dumps(request_body, indent=4))
     response = asyncio.run(async_post(url, request_body))
