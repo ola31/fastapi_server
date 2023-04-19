@@ -312,6 +312,8 @@ def general_call(request : Request, body:GeneralCallBody):
     request_body = jsonable_encoder(body)
     print(json.dumps(request_body, indent=4))
     response = asyncio.run(async_post(url, request_body))
+    if 'messageId' in response:
+        robot_ip_dict[response['messageId']] = request.client.host #add event push ip
     return response
 
 #사물 원격 콜 요청
@@ -399,7 +401,7 @@ def event_push_robot(request : Request, body: EventPushRobotBody):
         print('wait: '+cnt) 
         if cnt>30:
             return EventPushResponse(result='fail')
-    url='http://'+robot_ip_dict[body.messageId]+':8675/test'
+    url='http://'+robot_ip_dict[body.messageId]+':8675/event_push/robot'
     request_body = jsonable_encoder(body)
     print(json.dumps(request_body, indent=4))
     response = asyncio.run(async_post(url, request_body))
@@ -412,6 +414,7 @@ def event_push_el(request : Request, body:EventPushElBody):
     if client_ip_check(request.client.host) == False:
         raise HTTPException(status_code=403, detail="Access is Denied") 
     #url = base_url+'/api/v1/el/call/thing'
+    url='http://'+robot_ip_dict[body.messageId]+':8675/event_push/el'
     request_body = jsonable_encoder(body)
     response = asyncio.run(async_post(url, request_body))
     return response
