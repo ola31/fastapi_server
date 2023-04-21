@@ -163,6 +163,7 @@ hd = Hyundai_EV_api()
 base_url = 'http://13.125.50.47:8080'
 
 robot_ip_dict = {}  # {messageId : robot_ip_addr}
+robot_ip_doorhold_dict = {}  # {messageId : robot_ip_addr}
 
 def get_call_function():
     return sys._getframe(7).f_code.co_name
@@ -331,15 +332,15 @@ def robot_call(request : Request, body:RobotCallBody):
 
 #사물 원격 콜 요청(ST7 기종 전용)
 @app.post("/api/v1/el/call/general/free")
-def robot_call(request : Request, body:GeneralCallBody):
+def robot_st7_call(request : Request, body:GeneralCallBody):
     if client_ip_check(request.client.host) == False:
         raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url+'/api/v1/el/call/general/free'
     request_body = jsonable_encoder(body)
     #print(json.dumps(request_body, indent=4))
     response = asyncio.run(async_post(url, request_body))
-    # if 'messageId' in response:
-    #     robot_ip_dict[response['messageId']] = request.client.host #add event push ip
+    if 'messageId' in response:
+        robot_ip_doorhold_dict[response['messageId']] = request.client.host #add event push ip
     return response
 
 #사물 원격 콜 취소
@@ -427,7 +428,14 @@ def event_push_el(request : Request, body:EventPushElBody):
     if client_ip_check(request.client.host) == False:
         raise HTTPException(status_code=403, detail="Access is Denied") 
     #url = base_url+'/api/v1/el/call/thing'
-    url='http://'+robot_ip_dict[body.messageId]+':8675/event_push/el'
+    url=''
+    if body.messageId in robot_ip_doorhold_dict:
+        url='http://'+robot_ip_doorhold_dict[body.messageId]+':8675/event_push/el'
+        del robot_ip_doorhold_dict[body.messageId]
+    elif body.messageId in robot_ip_dict:
+        url='http://'+robot_ip_dict[body.messageId]+':8675/event_push/el'
+    else:
+        return EventPushResponse(result='fail')
     request_body = jsonable_encoder(body)
     response = asyncio.run(async_post(url, request_body))
     return response
