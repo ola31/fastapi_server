@@ -331,7 +331,7 @@ def robot_call(request : Request, body:RobotCallBody):
 
 #사물 원격 콜 요청(ST7 기종 전용)
 @app.post("/api/v1/el/call/general/free")
-def robot_call(request : Request, body:RobotCallBody):
+def robot_call(request : Request, body:GeneralCallBody):
     if client_ip_check(request.client.host) == False:
         raise HTTPException(status_code=403, detail="Access is Denied") 
     url = base_url+'/api/v1/el/call/general/free'
