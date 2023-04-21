@@ -329,6 +329,19 @@ def robot_call(request : Request, body:RobotCallBody):
         robot_ip_dict[response['messageId']] = request.client.host #add event push ip
     return response
 
+#사물 원격 콜 요청(ST7 기종 전용)
+@app.post("/api/v1/el/call/general/free")
+def robot_call(request : Request, body:RobotCallBody):
+    if client_ip_check(request.client.host) == False:
+        raise HTTPException(status_code=403, detail="Access is Denied") 
+    url = base_url+'/api/v1/el/call/general/free'
+    request_body = jsonable_encoder(body)
+    #print(json.dumps(request_body, indent=4))
+    response = asyncio.run(async_post(url, request_body))
+    # if 'messageId' in response:
+    #     robot_ip_dict[response['messageId']] = request.client.host #add event push ip
+    return response
+
 #사물 원격 콜 취소
 @app.delete("/api/v1/el/call/thing/messageid/{messageid}")
 def delete_robot_call(request : Request, messageid):
