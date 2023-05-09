@@ -153,7 +153,8 @@ approved_ip_dict = {
     '13.125.50.47': 'api_server',
     '172.0.0.1': 'robot1',
     '127.0.0.1': 'localhost_ip',
-    '223.171.146.77': 'G18-0009'
+    '223.171.146.77': 'G18-0009',
+    '112.216.15.138': 'pkw_desktop'
 
 }
 
@@ -176,12 +177,25 @@ def client_ip_check(ip_addr):
     return True if ip_addr in approved_ip_dict else False
 
 
+def get_header(header_dict):
+    try:
+        header = {'ApiKey': header_dict['apikey'],
+                  'ts': header_dict['ts'],
+                  'nonce': header_dict['nonce'],
+                  'signature': header_dict['signature'],
+                  'Authorization': header_dict['authorization']}
+        return header
+    except KeyError:
+        print(COLOR_RED, 'header key error', COLOR_END)
+        return None
+
+
 async def async_sleep(t):
     await asyncio.sleep(t)
 
 
-async def async_get(url):
-    async with aiohttp.ClientSession(headers=hd.make_header()) as session:
+async def async_get(url, header=None):
+    async with aiohttp.ClientSession(headers=header) as session:
         try:
             async with session.get(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None),
@@ -197,8 +211,8 @@ async def async_get(url):
             return False
 
 
-async def async_post(url, data):
-    async with aiohttp.ClientSession(headers=hd.make_header()) as session:
+async def async_post(url, data, header=None):
+    async with aiohttp.ClientSession(headers=header) as session:
         try:
             async with session.post(url, json=data) as response:
                 json = await asyncio.wait_for(response.json(content_type=None),
@@ -214,8 +228,8 @@ async def async_post(url, data):
             return False
 
 
-async def async_put(url):
-    async with aiohttp.ClientSession(headers=hd.make_header()) as session:
+async def async_put(url, header=None):
+    async with aiohttp.ClientSession(headers=header) as session:
         try:
             async with session.put(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), # noqa
@@ -231,8 +245,8 @@ async def async_put(url):
             return False
 
 
-async def async_delete(url):
-    async with aiohttp.ClientSession(headers=hd.make_header()) as session:
+async def async_delete(url, header=None):
+    async with aiohttp.ClientSession(headers=header) as session:
         try:
             async with session.delete(url) as response:
                 json = await asyncio.wait_for(response.json(content_type=None), # noqa
@@ -304,7 +318,11 @@ def get_site_list(request: Request):
     if not client_ip_check(request.client.host):
         raise HTTPException(status_code=403, detail='Access is Denied')
     url = base_url+'/api/v1/app/site'
-    response = asyncio.run(async_get(url))
+    h = dict(request.headers)
+    header = get_header(h)
+    if not header:
+        print(COLOR_RED, 'header error(', request.client.host, COLOR_END)
+    response = asyncio.run(async_get(url, header))
     return response
 
 
@@ -314,7 +332,11 @@ def get_site_detailed_info(request: Request, siteId):
     if not client_ip_check(request.client.host):
         raise HTTPException(status_code=403, detail='Access is Denied')
     url = base_url+'/api/v1/app/site/'+siteId
-    response = asyncio.run(async_get(url))
+    h = dict(request.headers)
+    header = get_header(h)
+    if not header:
+        print(COLOR_RED, 'header error(', request.client.host, COLOR_END)
+    response = asyncio.run(async_get(url, header))
     return response
 
 
@@ -324,7 +346,11 @@ def get_line_detailed_info(request: Request, lineId):
     if not client_ip_check(request.client.host):
         raise HTTPException(status_code=403, detail='Access is Denied')
     url = base_url+'/api/v1/app/line/' + lineId
-    response = asyncio.run(async_get(url))
+    h = dict(request.headers)
+    header = get_header(h)
+    if not header:
+        print(COLOR_RED, 'header error(', request.client.host, COLOR_END)
+    response = asyncio.run(async_get(url, header))
     return response
 
 
@@ -336,7 +362,11 @@ def general_call(request: Request, body: GeneralCallBody):
     url = base_url+'/api/v1/el/call/general'
     request_body = jsonable_encoder(body)
     print(json.dumps(request_body, indent=4))
-    response = asyncio.run(async_post(url, request_body))
+    h = dict(request.headers)
+    header = get_header(h)
+    if not header:
+        print(COLOR_RED, 'header error(', request.client.host, COLOR_END)
+    response = asyncio.run(async_post(url, request_body, header))
     if 'messageId' in response:
         robot_ip_dict[response['messageId']] = request.client.host
         # add event push ip
@@ -351,7 +381,11 @@ def robot_call(request: Request, body: RobotCallBody):
     url = base_url+'/api/v1/el/call/thing'
     request_body = jsonable_encoder(body)
     print(json.dumps(request_body, indent=4))
-    response = asyncio.run(async_post(url, request_body))
+    h = dict(request.headers)
+    header = get_header(h)
+    if not header:
+        print(COLOR_RED, 'header error(', request.client.host, COLOR_END)
+    response = asyncio.run(async_post(url, request_body, header))
     if 'messageId' in response:
         robot_ip_dict[response['messageId']] = request.client.host
         # add event push ip
@@ -366,7 +400,11 @@ def robot_st7_call(request: Request, body: GeneralCallBody):
     url = base_url+'/api/v1/el/call/general/free'
     request_body = jsonable_encoder(body)
     # print(json.dumps(request_body, indent=4))
-    response = asyncio.run(async_post(url, request_body))
+    h = dict(request.headers)
+    header = get_header(h)
+    if not header:
+        print(COLOR_RED, 'header error(', request.client.host, COLOR_END)
+    response = asyncio.run(async_post(url, request_body, header))
     if 'messageId' in response:
         robot_ip_doorhold_dict[response['messageId']] = request.client.host
         # add event push ip
@@ -379,7 +417,11 @@ def delete_robot_call(request: Request, messageid):
     if not client_ip_check(request.client.host):
         raise HTTPException(status_code=403, detail='Access is Denied')
     url = base_url+'/api/v1/el/call/thing/messageid/'+messageid
-    asyncio.run(async_delete(url))
+    h = dict(request.headers)
+    header = get_header(h)
+    if not header:
+        print(COLOR_RED, 'header error(', request.client.host, COLOR_END)
+    asyncio.run(async_delete(url, header))
     if messageid in robot_ip_dict:
         del robot_ip_dict[messageid]  # remove event push ip
     return
@@ -390,7 +432,11 @@ def get_robot_call_status(request: Request, messageid):
     if not client_ip_check(request.client.host):
         raise HTTPException(status_code=403, detail='Access is Denied')
     url = base_url + '/api/v1/el/call/thing/messageid/'+messageid+'/status'
-    response = asyncio.run(async_get(url))
+    h = dict(request.headers)
+    header = get_header(h)
+    if not header:
+        print(COLOR_RED, 'header error(', request.client.host, COLOR_END)
+    response = asyncio.run(async_get(url, header))
     return response
 
 
@@ -401,7 +447,11 @@ def set_robot_call_status(request: Request, messageid, status):
         raise HTTPException(status_code=403, detail='Access is Denied')
     url = base_url + '/api/v1/el/call/thing/messageid/' + messageid + \
         '/status/'+status
-    asyncio.run(async_put(url))
+    h = dict(request.headers)
+    header = get_header(h)
+    if not header:
+        print(COLOR_RED, 'header error(', request.client.host, COLOR_END)
+    asyncio.run(async_put(url, header))
     if messageid == 'destinationFloorGotOff' and messageid in robot_ip_dict:
         del robot_ip_dict[messageid]  # remove event push ip
     return
@@ -413,7 +463,11 @@ def get_line_status(request: Request, lineid):
     if not client_ip_check(request.client.host):
         raise HTTPException(status_code=403, detail='Access is Denied')
     url = base_url + '/api/v1/el/lineid/'+lineid+'/status'
-    response = asyncio.run(async_get(url))
+    h = dict(request.headers)
+    header = get_header(h)
+    if not header:
+        print(COLOR_RED, 'header error(', request.client.host, COLOR_END)
+    response = asyncio.run(async_get(url, header))
     return response
 
 
@@ -423,7 +477,11 @@ def get_el_status(request: Request, lineid, elid):
     if client_ip_check(request.client.host):
         raise HTTPException(status_code=403, detail='Access is Denied')
     url = base_url + '/api/v1/el/lineid/'+lineid+'/elid/'+elid+'/status'
-    response = asyncio.run(async_get(url))
+    h = dict(request.headers)
+    header = get_header(h)
+    if not header:
+        print(COLOR_RED, 'header error(', request.client.host, COLOR_END)
+    response = asyncio.run(async_get(url, header))
     return response
 
 
@@ -433,7 +491,11 @@ def get_message_id(request: Request, lineid):
     if not client_ip_check(request.client.host):
         raise HTTPException(status_code=403, detail='Access is Denied')
     url = base_url + '/api/v1/el/call/thing/lineid/' + lineid + '/messageid'
-    response = asyncio.run(async_get(url))
+    h = dict(request.headers)
+    header = get_header(h)
+    if not header:
+        print(COLOR_RED, 'header error(', request.client.host, COLOR_END)
+    response = asyncio.run(async_get(url, header))
     return response
 
 
