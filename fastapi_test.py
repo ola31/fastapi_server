@@ -1,10 +1,6 @@
 # from functools import wraps
 import asyncio
-import datetime
-import hashlib
-import hmac
 import json
-import secrets
 import sys
 import time
 
@@ -33,74 +29,6 @@ COLOR_YELLOW = '\033[93m'
 COLOR_END = '\033[0m'
 BOLD_START = '\033[1m'
 BOLD_END = '\033[0m'
-
-HMAC_ALGORITHM = 'HmacSHA256'
-API_KEY = 'HDE57e65ff1960c11ed92a'
-API_SECRET = '57e66018960c11ed92a802b67259d33a'
-
-
-class Hyundai_EV_api:
-
-    def __init__(self):
-        return
-
-    def make_header(self):
-
-        headerDict = {}
-
-        # 발급받은 apiKey 값
-        key_ = API_KEY
-        api_secret = API_SECRET
-
-        # API 호출 일시 (yyyy-MM-dd:mm:ss.SSSX)
-        timestamp_now = self.getTimeStamp()
-
-        # 16 Byte 난수
-        nonce_hex_ = secrets.token_hex(16)
-
-        # 발급받은 api secret 조합
-        signature_ = self.getSignature(
-            key=api_secret, data=key_,
-            timestamp=timestamp_now, nonce=nonce_hex_)
-
-        # Authorization property
-        Authorization_param = \
-            'apiKey={0},ts={1},nonce={2},signature={3}'.format(
-             key_, timestamp_now, nonce_hex_, signature_)
-        Authorization_ = HMAC_ALGORITHM+' '+Authorization_param
-
-        headerDict.setdefault('Authorization', Authorization_)
-        headerDict.setdefault('apiKey', key_)
-        headerDict.setdefault('ts', timestamp_now)
-        headerDict.setdefault('nonce', nonce_hex_)
-        headerDict.setdefault('signature', signature_)
-        return headerDict
-
-    def getHash_1(self, data, key):
-        key_bytes = bytes.fromhex(key)
-        data_bytes = bytes.fromhex(data)
-        hash = hmac.new(
-            key_bytes, msg=data_bytes, digestmod=hashlib.sha256).hexdigest()
-        return hash
-
-    def getHash_2(self, data, key):
-        key_bytes = bytes.fromhex(key)
-        data_bytes = bytes(data, 'utf-8')
-        hash = hmac.new(
-            key_bytes, msg=data_bytes, digestmod=hashlib.sha256).hexdigest()
-        return hash
-
-    def getSignature(self, data, key, timestamp, nonce):
-        encryptedNonce = self.getHash_1(nonce, key)
-        encryptedTimestamp = self.getHash_2(timestamp, encryptedNonce)
-        signature = self.getHash_2(data, encryptedTimestamp)
-        return signature
-
-    def getTimeStamp(self):
-        now = str(datetime.datetime.utcnow())
-        time_zone = 'Z'  # UTC time
-        timestamp = now[0:10]+'T'+now[11:23]+time_zone
-        return timestamp
 
 
 class Dummy(BaseModel):
@@ -159,8 +87,6 @@ approved_ip_dict = {
 }
 
 app = FastAPI()
-
-hd = Hyundai_EV_api()
 
 # base_url = 'http://127.0.0.1:8000'
 base_url = 'http://13.125.50.47:8080'
