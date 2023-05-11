@@ -9,17 +9,11 @@ import aiohttp
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 
-# import requests
-
-# import threading
-
-# import codecs
-
 from pydantic import BaseModel
 
 import uvicorn
 
-i = 0
+import yaml
 
 COLOR_MAGENTA = '\033[95m'
 COLOR_GREEN = '\033[92m'
@@ -77,14 +71,16 @@ class EventPushResponse(BaseModel):
     result: str
 
 
-approved_ip_dict = {
-    '13.125.50.47': 'api_server',
-    '172.0.0.1': 'robot1',
-    '127.0.0.1': 'localhost_ip',
-    '223.171.146.77': 'G18-0009',
-    '112.216.15.138': 'pkw_desktop'
+approved_ip_dict = {}
 
-}
+# approved_ip_dict = {
+#     '13.125.50.47': 'api_server',
+#     '172.0.0.1': 'robot1',
+#     '127.0.0.1': 'localhost_ip',
+#     '223.171.146.77': 'G18-0009',
+#     '112.216.15.138': 'pkw_desktop'
+
+# }
 
 app = FastAPI()
 
@@ -114,6 +110,19 @@ def get_header(header_dict):
     except KeyError:
         print(COLOR_RED, 'header key error', COLOR_END)
         return None
+
+
+def read_yaml():
+    file_path = './data/ip_allowed.yaml'
+    global approved_ip_dict
+    try:
+        with open(file_path) as f:
+            approved_ip_dict = yaml.load(f, Loader=yaml.FullLoader)
+        print(COLOR_GREEN, 'Load Yaml File', COLOR_END)
+        print(COLOR_GREEN, 'Path : ', file_path, COLOR_END)
+    except Exception: # noqa
+        print(COLOR_RED, 'Failed to Read Yaml File /',
+              file_path, COLOR_END)
 
 
 async def async_sleep(t):
@@ -186,56 +195,6 @@ async def async_delete(url, header=None):
             print(COLOR_RED + 'DELETE_ERROR / ' + str(error) + '/' +
                   get_call_function() + COLOR_END)
             return False
-
-
-# def a():
-#     text = 'a'
-#     future = asyncio.run_coroutine_threadsafe(async_get(), loop)
-#     future.add_done_callback(callback)
-
-
-# @app.get('/test3')
-# def test():
-#     # params = request.get_json()
-#     # print("받은 Json 데이터 ", params)
-#     print('aa')
-#     global i
-#     a = 'test1/' + str(i)
-#     # url = 'http://13.125.50.47:8080/api/v1/el/lineid/L00025754/status'
-#     #header_ = hd.make_header()
-#     # res = requests.get(url, headers = header_, timeout = 3)
-#     result = asyncio.run(async_get())
-
-#     response = {
-#         # "result": "ok"
-#         "result": result
-#     }
-#     i = i+1
-#     if i>1000:
-#         i = 0
-#     #return jsonify(response)
-#     return response
-
-
-# @app.get('/testt')
-# # async def testt():
-# def testt():
-#     #params = request.get_json()
-#     #print("받은 Json 데이터 ", params)
-#     print("bb")
-#     global i
-#     a = 'test2/' + str(i)
-
-#     response = {
-#         #"result": "ok"
-#         "result": a
-#     }
-#     i = i+1
-#     if i>1000:
-#         i = 0
-#     time.sleep(2)
-#     #return jsonify(response)
-#     return response
 
 
 # 사이트 목록 조회
@@ -482,4 +441,5 @@ async def root():
 
 
 if __name__ == '__main__':
+    read_yaml()
     uvicorn.run(app, host='127.0.0.1', port=8000)
